@@ -1,0 +1,159 @@
+README for MacOS X
+
+Building from source on Mac OS X 10.4
+=====================================
+
+Use
+
+sudo gcc_select 3.3
+
+before compilation.  System can be returned to the default setting using
+
+sudo gcc_select 4.0
+
+Otherwise as per 10.3 below.
+
+Building from source on Mac OS X 10.3
+=====================================
+
+These instructions are based on building the Mushware source tree on a MacOS X
+10.3 installation.
+
+Install the Developer Tools.
+
+Check that your tools can build the application.  From Project Builder, create
+a new project of type 'C++ tool'.  Replace the contents of the main.cpp file
+with the following:
+
+#include <string>
+#include <map>
+
+class SomeClass
+{
+public:
+    void SomeFunction(void) {}
+};
+
+std::map<std::string, void (SomeClass::*)(void)> someMap;
+
+int main (int argc, const char * argv[])
+{
+    someMap["some"]=&SomeClass::SomeFunction;
+    return 0;
+}
+
+If the above will not compile, you will need to use gcc-2.95 to compile the
+software.  Open a terminal (Applications->Utilities->Terminal) and enter:
+
+sudo gcc_select 2
+
+Note that this has a fundamental effect on your development system, and can be
+reversed using:
+
+sudo gcc_select 3
+
+Download the files <app name>-<version>.tar.gz into your home directory.  Open
+a terminal (Applications->Utilities->Terminal).
+
+tar xvzf <app name>-<version>.tar.gz
+cd <app name>-<version>
+./configure
+
+Configure will complain about the absence of various libraries.  The
+following procedure was necessary to get the software to build:
+
+# Activate prebinding.  This setenv needs to be present when each of the libraries
+# is built.  See http://developer.apple.com/techpubs/macosx/ReleaseNotes/Prebinding.html
+
+setenv LD_PREBIND
+
+# The perl commands alter libtool so that it generates libraries which are searched for
+# releative to the executable.  If you don't want this behaviour the perl can be removed.
+#
+# Some work can be avoided by using the ports collection at http://darwinports.opendarwin.org/
+
+# Download  ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-4.5.tar.gz
+tar xvzf pcre-4.5.tar.gz
+cd pcre-4.5
+./configure --enable-shared=no
+make
+sudo make install
+
+# Download expat-1.95.7.tar.gz from http://sourceforge.net/projects/expat/
+tar xvzf expat-1.95.7.tar.gz
+cd expat-1.95.7
+./configure --enable-shared=no
+Add #define XMLCALL to lib/expat.h
+perl -p -i.original -e 's#-install_name \\\$rpath#-install_name \@executable_path/../Frameworks#g' libtool
+make
+sudo make install
+
+# Download http://www.ibiblio.org/pub/Linux/libs/graphics/libungif-4.1.0.tar.gz
+tar xvzf libungif-4.1.0.tar.gz
+cd libungif-4.1.0.tar.gz
+# Copy expat's libtool into our directory.  Change path to suit your setup
+cp ../expat-1.95.7/libtool .
+./configure powerpc-apple-bsd
+cp ../expat-1.95.7/libtool .
+make
+sudo make install
+
+# Download ftp://ftp.remotesensing.org/pub/libtiff/tiff-v3.6.1.tar.gz
+tar xvzf tiff-v3.6.1.tar.gz
+cd tiff-v3.6.1
+./configure
+perl -p -i.original -e 's#-install_name #-prebind -seg1addr 0x15000000 -install_name \@executable_path/../Frameworks/#g' libtiff/Makefile
+make
+sudo make install
+# Might be necessary: sudo ranlib /usr/local/lib/libtiff.a
+
+# Download the SDL 1.2.6 from http://www.libsdl.org/
+tar xvzf SDL-1.2.6.tar.gz
+cd SDL-1.2.6
+./configure
+perl -p -i.original -e 's#-install_name \\\$rpath#-prebind -seg1addr 0x12000000 -install_name \@executable_path/../Frameworks#g' libtool
+make
+sudo make install
+
+# Download ftp://sunsite.dk/pub/os/linux/loki/open-source/smpeg/smpeg-0.4.4.tar.gz
+tar xvzf smpeg-0.4.4.tar.gz
+cd smpeg-0.4.4
+# Copy SDL's libtool and ltconfig into our directory.  Change path to suit your setup
+cp ../SDL-1.2.6/libtool .
+cp ../SDL-1.2.6/ltconfig .
+cp ../SDL-1.2.6/ltmain.sh .
+# Make sure that sdl-config is in our path
+setenv PATH ${PATH}:/usr/local/bin
+./configure
+perl -p -i.original -e 's#-install_name \\\$rpath#-prebind -seg1addr 0x13000000 -install_name \@executable_path/../Frameworks#g' libtool
+perl -p -i.original -e 's# -undefined suppress##g' libtool
+# Use make -i if there are errors when building plaympeg
+make
+sudo make install
+
+# Download http://www.vorbis.com/files/1.0/unix/libogg-1.0.tar.gz
+tar xvzf libogg-1.0.tar.gz
+cd libogg-1.0
+./configure --enable-shared=no
+make
+sudo make install
+
+# Download http://www.vorbis.com/files/1.0/unix/libvorbis-1.0.tar.gz
+tar xvzf libvorbis-1.0.tar.gz
+cd libvorbis-1.0
+./configure --enable-shared=no
+make
+sudo make install
+
+# Download http://www.libsdl.org/projects/SDL_mixer/release/SDL_mixer-1.2.5.tar.gz
+tar xvzf SDL_mixer-1.2.5.tar.gz
+cd SDL_mixer-1.2.5
+# Copy SDL's libtool and ltconfig into our directory.  Change path to suit your setup
+cp ../SDL-1.2.6/libtool .
+cp ../SDL-1.2.6/ltconfig .
+cp ../SDL-1.2.6/ltmain.sh .
+./configure
+perl -p -i.original -e 's#-install_name \\\$rpath#-prebind -seg1addr 0x14000000 -install_name \@executable_path/../Frameworks#g' libtool
+# Use make -i if there are errors when building playwave
+make
+sudo make install

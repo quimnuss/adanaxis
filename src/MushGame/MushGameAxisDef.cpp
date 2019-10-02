@@ -1,0 +1,324 @@
+//%Header {
+/*****************************************************************************
+ *
+ * File: src/MushGame/MushGameAxisDef.cpp
+ *
+ * Author: Andy Southgate 2002-2005
+ *
+ * This file contains original work by Andy Southgate.  The author and his
+ * employer (Mushware Limited) irrevocably waive all of their copyright rights
+ * vested in this particular version of this file to the furthest extent
+ * permitted.  The author and Mushware Limited also irrevocably waive any and
+ * all of their intellectual property rights arising from said file and its
+ * creation that would otherwise restrict the rights of any party to use and/or
+ * distribute the use of, the techniques and methods used herein.  A written
+ * waiver can be obtained via http://www.mushware.com/.
+ *
+ * This software carries NO WARRANTY of any kind.
+ *
+ ****************************************************************************/
+//%Header } 2CFncbRjYIdlO9JtmJIUgg
+/*
+ * $Id: MushGameAxisDef.cpp,v 1.3 2005/07/08 12:07:07 southa Exp $
+ * $Log: MushGameAxisDef.cpp,v $
+ * Revision 1.3  2005/07/08 12:07:07  southa
+ * MushGaem control work
+ *
+ * Revision 1.2  2005/07/07 16:54:17  southa
+ * Control tweaks
+ *
+ * Revision 1.1  2005/07/06 19:08:27  southa
+ * Adanaxis control work
+ *
+ */
+
+#include "MushGameAxisDef.h"
+
+using namespace Mushware;
+using namespace std;
+
+void
+MushGameAxisDef::PosConstrainAndSet(Mushware::tVal inPos)
+{
+    tVal newPos = inPos;
+
+    if (m_useBounds)
+    {
+        MushcoreUtil::Constrain(newPos, m_minBound, m_maxBound);
+    }
+    
+    if (m_pos != newPos)
+    {
+        m_posHasMoved = true;
+        m_pos = newPos;
+    }
+}
+
+void
+MushGameAxisDef::Accelerate(Mushware::tVal inAmount)
+{
+    if (m_integrate)
+    {
+        if (m_vel * inAmount < 0)
+        {
+            // Acceleration against the direction of movement, so decelerate as well
+            Decelerate(fabs(inAmount));
+        }
+        m_vel += m_accel * inAmount;
+        MushcoreUtil::Constrain(m_vel, -m_velLimit, m_velLimit);
+    }
+    else
+    {
+        PosConstrainAndSet(m_pos + m_accel * inAmount);
+    }
+    
+    if (inAmount != 0)
+    {
+        m_deviceAccelerate = false;
+    }
+}
+
+void
+MushGameAxisDef::DeviceAccelerate(Mushware::tVal inAmount)
+{
+    if (m_integrate)
+    {
+        m_vel += m_deviceSensitivity * inAmount;
+        MushcoreUtil::Constrain(m_vel, -m_velLimit, m_velLimit);
+    }
+    else
+    {
+        PosConstrainAndSet(m_pos + m_deviceSensitivity * inAmount);
+    }
+    
+    if (inAmount != 0)
+    {
+        m_deviceAccelerate = true;
+    }
+}
+
+void
+MushGameAxisDef::Decelerate(Mushware::tVal inAmount)
+{
+    tVal change = m_accel * inAmount;
+    
+    if (m_deviceAccelerate)
+    {
+        change *= m_deviceDamping;
+    }
+        
+    if (change > fabs(m_vel))
+    {
+        m_vel = 0;
+    }
+    else if (m_vel > 0)
+    {
+        m_vel -= change;
+    }
+    else
+    {
+        m_vel += change;
+    }
+}
+
+void
+MushGameAxisDef::ApplyIntegration(Mushware::tVal inAmount)
+{
+    PosConstrainAndSet(m_pos + m_vel * inAmount);
+}    
+
+//%outOfLineFunctions {
+
+const char *MushGameAxisDef::AutoName(void) const
+{
+    return "MushGameAxisDef";
+}
+
+MushcoreVirtualObject *MushGameAxisDef::AutoClone(void) const
+{
+    return new MushGameAxisDef(*this);
+}
+
+MushcoreVirtualObject *MushGameAxisDef::AutoCreate(void) const
+{
+    return new MushGameAxisDef;
+}
+
+MushcoreVirtualObject *MushGameAxisDef::AutoVirtualFactory(void)
+{
+    return new MushGameAxisDef;
+}
+namespace
+{
+void AutoInstall(void)
+{
+    MushcoreFactory::Sgl().FactoryAdd("MushGameAxisDef", MushGameAxisDef::AutoVirtualFactory);
+}
+MushcoreInstaller AutoInstaller(AutoInstall);
+} // end anonymous namespace
+void
+MushGameAxisDef::AutoPrint(std::ostream& ioOut) const
+{
+    ioOut << "[";
+    ioOut << "useDevice=" << m_useDevice << ", ";
+    ioOut << "useKeys=" << m_useKeys << ", ";
+    ioOut << "useBounds=" << m_useBounds << ", ";
+    ioOut << "integrate=" << m_integrate << ", ";
+    ioOut << "deviceNum=" << m_deviceNum << ", ";
+    ioOut << "deviceAxisNum=" << m_deviceAxisNum << ", ";
+    ioOut << "deviceSensitivity=" << m_deviceSensitivity << ", ";
+    ioOut << "deviceDamping=" << m_deviceDamping << ", ";
+    ioOut << "upKey=" << m_upKey << ", ";
+    ioOut << "downKey=" << m_downKey << ", ";
+    ioOut << "requiredKey=" << m_requiredKey << ", ";
+    ioOut << "minBound=" << m_minBound << ", ";
+    ioOut << "maxBound=" << m_maxBound << ", ";
+    ioOut << "axisName=" << m_axisName << ", ";
+    ioOut << "pos=" << m_pos << ", ";
+    ioOut << "vel=" << m_vel << ", ";
+    ioOut << "accel=" << m_accel << ", ";
+    ioOut << "velLimit=" << m_velLimit << ", ";
+    ioOut << "posHasMoved=" << m_posHasMoved << ", ";
+    ioOut << "deviceAccelerate=" << m_deviceAccelerate;
+    ioOut << "]";
+}
+bool
+MushGameAxisDef::AutoXMLDataProcess(MushcoreXMLIStream& ioIn, const std::string& inTagStr)
+{
+    if (inTagStr == "obj")
+    {
+        AutoInputPrologue(ioIn);
+        ioIn >> *this;
+        AutoInputEpilogue(ioIn);
+    }
+    else if (inTagStr == "useDevice")
+    {
+        ioIn >> m_useDevice;
+    }
+    else if (inTagStr == "useKeys")
+    {
+        ioIn >> m_useKeys;
+    }
+    else if (inTagStr == "useBounds")
+    {
+        ioIn >> m_useBounds;
+    }
+    else if (inTagStr == "integrate")
+    {
+        ioIn >> m_integrate;
+    }
+    else if (inTagStr == "deviceNum")
+    {
+        ioIn >> m_deviceNum;
+    }
+    else if (inTagStr == "deviceAxisNum")
+    {
+        ioIn >> m_deviceAxisNum;
+    }
+    else if (inTagStr == "deviceSensitivity")
+    {
+        ioIn >> m_deviceSensitivity;
+    }
+    else if (inTagStr == "deviceDamping")
+    {
+        ioIn >> m_deviceDamping;
+    }
+    else if (inTagStr == "upKey")
+    {
+        ioIn >> m_upKey;
+    }
+    else if (inTagStr == "downKey")
+    {
+        ioIn >> m_downKey;
+    }
+    else if (inTagStr == "requiredKey")
+    {
+        ioIn >> m_requiredKey;
+    }
+    else if (inTagStr == "minBound")
+    {
+        ioIn >> m_minBound;
+    }
+    else if (inTagStr == "maxBound")
+    {
+        ioIn >> m_maxBound;
+    }
+    else if (inTagStr == "axisName")
+    {
+        ioIn >> m_axisName;
+    }
+    else if (inTagStr == "pos")
+    {
+        ioIn >> m_pos;
+    }
+    else if (inTagStr == "vel")
+    {
+        ioIn >> m_vel;
+    }
+    else if (inTagStr == "accel")
+    {
+        ioIn >> m_accel;
+    }
+    else if (inTagStr == "velLimit")
+    {
+        ioIn >> m_velLimit;
+    }
+    else if (inTagStr == "posHasMoved")
+    {
+        ioIn >> m_posHasMoved;
+    }
+    else if (inTagStr == "deviceAccelerate")
+    {
+        ioIn >> m_deviceAccelerate;
+    }
+    else 
+    {
+        return false;
+    }
+    return true;
+}
+void
+MushGameAxisDef::AutoXMLPrint(MushcoreXMLOStream& ioOut) const
+{
+    ioOut.TagSet("useDevice");
+    ioOut << m_useDevice;
+    ioOut.TagSet("useKeys");
+    ioOut << m_useKeys;
+    ioOut.TagSet("useBounds");
+    ioOut << m_useBounds;
+    ioOut.TagSet("integrate");
+    ioOut << m_integrate;
+    ioOut.TagSet("deviceNum");
+    ioOut << m_deviceNum;
+    ioOut.TagSet("deviceAxisNum");
+    ioOut << m_deviceAxisNum;
+    ioOut.TagSet("deviceSensitivity");
+    ioOut << m_deviceSensitivity;
+    ioOut.TagSet("deviceDamping");
+    ioOut << m_deviceDamping;
+    ioOut.TagSet("upKey");
+    ioOut << m_upKey;
+    ioOut.TagSet("downKey");
+    ioOut << m_downKey;
+    ioOut.TagSet("requiredKey");
+    ioOut << m_requiredKey;
+    ioOut.TagSet("minBound");
+    ioOut << m_minBound;
+    ioOut.TagSet("maxBound");
+    ioOut << m_maxBound;
+    ioOut.TagSet("axisName");
+    ioOut << m_axisName;
+    ioOut.TagSet("pos");
+    ioOut << m_pos;
+    ioOut.TagSet("vel");
+    ioOut << m_vel;
+    ioOut.TagSet("accel");
+    ioOut << m_accel;
+    ioOut.TagSet("velLimit");
+    ioOut << m_velLimit;
+    ioOut.TagSet("posHasMoved");
+    ioOut << m_posHasMoved;
+    ioOut.TagSet("deviceAccelerate");
+    ioOut << m_deviceAccelerate;
+}
+//%outOfLineFunctions } 4WoWq4JMF1zjJT3cmoZKzg

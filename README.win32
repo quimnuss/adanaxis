@@ -1,0 +1,50 @@
+To build for Windows using Visual C++
+
+A project is available in the VisualC directory.  A cygwin installation
+will still be required to generate the release using make win32-release.
+
+To build for Windows using cygwin
+
+** The cygwin build has not been maintained since ddraw.h was added
+** to the main build.
+
+Install cygwin from cygwin.com
+Install the package MSYS from mingw.org in its default location
+Install the package MingW from mingw.org in its default location
+Edit /cygwin/etc/profile and place the MingW directory at the start of the path.  e.g.
+
+PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+
+becomes
+
+PATH="/cygdrive/c/MinGW/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+Add the path to your DLLs to the PATH environment variable.  Add this to .bashrc in your cygwin home directory:
+PATH=$PATH:$HOME/core-app/win32/win32libs
+export PATH
+
+Ensure that any DLLs in the distribution are executable, e.g. chmod +x win32/win32libs.
+
+Remove MingW's ar.exe from the path, e.g. mv C:/MingW/bin/ar.exe C:/MingW/bin/mingw-ar.exe
+Remove MingW's ranlib.exe from the path, e.g. mv C:/MingW/bin/ranlib.exe C:/MingW/bin/mingw-ranlib.exe
+Rename cygwin's pcre and expat libraries.
+
+Build or get the required libraries using this environment.  Use
+
+./configure --prefix=C:/MinGW --build=i686-pc-mingw32 --target=i686-pc-mingw32
+
+to place them in the MingW search path.  Most packages are available at http://gnuwin32.sourceforge.net/, or failing that http://mingwrep.sourceforge.net/.  Precompiled GLUT can be found in the file glutming.zip at http://mywebpage.netscape.com/PtrPck/glut.htm.  Libraries which do not need to be dynamically linked should be built with --enable-shared=no.
+
+You may need to patch libogg as per http://www.xiph.org/archives/vorbis-dev/200212/0009.html.
+
+Rename /MinGW/bin/i686-pc-mingw32-sdl-config to sdl-config if necessary
+
+Some libraries will fail to build their example applications because of Cygwin/MinGW path differences.  So long as the library builds, use make -i to ignore the errors.
+
+Errors:
+
+0xC000022 on application startup:  Permision denied.  Typically a DLL which doesn't have execute permission.
+When building libraries, libtool may expand library paths by prepending /usr/lib.  For now, remove or rename the offending libraries is cygwin's /usr/lib (usually expat and pcre).
+
+Use make win32-release to generate an installer.  This requires the
+NSIS package.
